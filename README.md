@@ -108,11 +108,23 @@ where a.table_schema = 'ad_dw'
 ## Step 5: Unload the data from the original table to S3
 
 ```sql
+
+unload ('select * from ad_dw.d301_dwm_customer')
+to 's3://s3-bucket-name/resize-redshift-columns/d301_dwm_customer/'
+ACCESS_KEY_ID '{ACCESS_KEY_ID}'
+SECRET_ACCESS_KEY '{SECRET_ACCESS_KEY}'
+GZIP;
+
 ```
 
 ## Step 6: Copy the data from S3 to the new table 
 
 ```sql
+copy ad_dw.d301_dwm_customer_resize_columns
+from 's3://s3-bucket-name/resize-redshift-columns/d301_dwm_customer/'
+ACCESS_KEY_ID '{ACCESS_KEY_ID}'
+SECRET_ACCESS_KEY '{SECRET_ACCESS_KEY}'
+GZIP;
 ```
 
 ## Step 7: Check if the new table is identical to the original table 
@@ -120,6 +132,15 @@ where a.table_schema = 'ad_dw'
 It passes if the below script returns the empty result. 
 
 ```sql
+select * from ad_dw.d301_dwm_customer
+except
+select * from ad_dw.d301_dwm_customer_resize_columns
+
+union all
+
+select * from ad_dw.d301_dwm_customer_resize_columns
+except
+select * from ad_dw.d301_dwm_customer
 ```
 
 ## Step 8: Switch the tables and drop the original one 
