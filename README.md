@@ -84,7 +84,7 @@ The procedure has the 4 parameters:
 4. var_ratio decimal(19,2), the ratio used to get the to-be column length based on the as-is column length 
 
 ```sql
-call proc_replicate_table_with_resize_columns('ad_dw', 'd301_dwm_customer', '_resize_columns', '1.15');
+call proc_replicate_table_with_resize_columns('test_schema', 'test_table', '_resize_columns', '1.15');
 
 select from temp_table_alter_scripts;
 ```
@@ -100,17 +100,17 @@ from svv_columns as a
 inner join svv_columns as b
     on a.table_name + '_resize_columns' = b.table_name
     and a.column_name = b.column_name
-where a.table_schema = 'ad_dw'
-  and a.table_name = 'd301_dwm_customer'
-  and b.table_name = 'd301_dwm_customer_resize_columns';
+where a.table_schema = 'test_schema'
+  and a.table_name = 'test_table'
+  and b.table_name = 'test_table_resize_columns';
 ```
 
 ## Step 5: Unload the data from the original table to S3
 
 ```sql
 
-unload ('select * from ad_dw.d301_dwm_customer')
-to 's3://s3-bucket-name/resize-redshift-columns/d301_dwm_customer/'
+unload ('select * from test_schema.test_table')
+to 's3://s3-bucket-name/resize-redshift-columns/test_table/'
 ACCESS_KEY_ID '{ACCESS_KEY_ID}'
 SECRET_ACCESS_KEY '{SECRET_ACCESS_KEY}'
 GZIP;
@@ -120,8 +120,8 @@ GZIP;
 ## Step 6: Copy the data from S3 to the new table 
 
 ```sql
-copy ad_dw.d301_dwm_customer_resize_columns
-from 's3://s3-bucket-name/resize-redshift-columns/d301_dwm_customer/'
+copy test_schema.test_table_resize_columns
+from 's3://s3-bucket-name/resize-redshift-columns/test_table/'
 ACCESS_KEY_ID '{ACCESS_KEY_ID}'
 SECRET_ACCESS_KEY '{SECRET_ACCESS_KEY}'
 GZIP;
@@ -132,25 +132,25 @@ GZIP;
 It passes if the below script returns the empty result. 
 
 ```sql
-select * from ad_dw.d301_dwm_customer
+select * from test_schema.test_table
 except
-select * from ad_dw.d301_dwm_customer_resize_columns
+select * from test_schema.test_table_resize_columns
 
 union all
 
-select * from ad_dw.d301_dwm_customer_resize_columns
+select * from test_schema.test_table_resize_columns
 except
-select * from ad_dw.d301_dwm_customer
+select * from test_schema.test_table
 ```
 
 ## Step 8: Rename the tables and drop the original table 
 
 ```sql
-alter table ad_dw.d301_dwm_customer
-rename to d301_dwm_customer_original;
+alter table test_schema.test_table
+rename to test_table_original;
 
-alter table ad_dw.d301_dwm_customer_resize_columns
-rename to d301_dwm_customer;
+alter table test_schema.test_table_resize_columns
+rename to test_table;
 
-drop table ad_dw.d301_dwm_customer_original;
+drop table test_schema.test_table_original;
 ```
