@@ -91,7 +91,7 @@ select from temp_table_alter_scripts;
 
 ## Step 3: Copy the alter scripts from Step 2, and run the scripts
 
-## Step 4: Double confirm whether the column size has been changed as expected 
+## Step 4: Confirm whether the column size has been changed as expected 
 
 ```sql
 select  a.table_name, a.column_name, a.data_type,
@@ -105,4 +105,25 @@ where a.table_schema = 'ad_dw'
   and b.table_name = 'd301_dwm_customer_resize_columns';
 ```
 
+## Step 5: Unload the data from the original table to S3
 
+```sql
+```
+
+## Step 6: Copy the data from S3 to the new table 
+
+```sql
+```
+
+## Step 7: Check if the new table is identical to the original table 
+
+It passes if the below script returns the empty result. 
+
+```sql
+```
+
+## Step 8: Switch the tables and drop the original one 
+
+```sql
+
+```
