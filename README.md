@@ -143,8 +143,14 @@ except
 select * from ad_dw.d301_dwm_customer
 ```
 
-## Step 8: Switch the tables and drop the original one 
+## Step 8: Rename the tables and drop the original table 
 
 ```sql
+alter table ad_dw.d301_dwm_customer
+rename to d301_dwm_customer_original;
 
+alter table ad_dw.d301_dwm_customer_resize_columns
+rename to d301_dwm_customer;
+
+drop table ad_dw.d301_dwm_customer_original;
 ```
