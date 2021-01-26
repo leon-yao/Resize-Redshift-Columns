@@ -4,10 +4,79 @@
 
 ## Step 1: Create the stored procedure in Redshift
 
+```sql
+create or replace procedure proc_replicate_table_with_resize_columns
+    (
+        var_schema_name in varchar(50),
+        var_table_name in varchar(50),
+        var_postfix in varchar(50),
+        var_ratio in decimal(19,2)
+    )
+    language plpgsql
+as $$
+DECLARE
+    sql_text varchar(65535);
+    table_full_name varchar (100) ;
+    table_full_name_new varchar (100) ;
+    rec RECORD;
+BEGIN
+    select into table_full_name var_schema_name || '.' || var_table_name;
+    select into table_full_name_new  var_schema_name || '.' || var_table_name || var_postfix;
+
+    --create a new table with the same schema
+    EXECUTE 'create table '  || table_full_name_new || ' (like ' || table_full_name || ')';
+
+    -- Get the temp table for all columns for a table, temp_table_column_scripts
+    drop table if exists temp_table_column_scripts;
+    create temp table temp_table_column_scripts(script varchar);
+
+    insert into temp_table_column_scripts
+    select  'select ''' || column_name || ''' as column_name, ' ||
+       'max(len(' || column_name ||')) as column_actual_len, ' ||
+       cast(character_maximum_length as varchar) || ' as column_def_len' ||
+       ' from ' || table_schema || '.' || table_name as column_script
+    from svv_columns
+    where table_schema = var_schema_name and table_name = var_table_name and data_type = 'character varying';
+
+    --loop to insert the column info into temp_table_column_info
+    drop table if exists temp_table_column_info;
+    create temp table temp_table_column_info(column_name varchar, column_actual_len int, column_def_len int);
+
+    FOR rec IN SELECT script FROM temp_table_column_scripts
+      LOOP
+        RAISE INFO 'insert into temp_table_column_info %', rec.script;
+        EXECUTE 'insert into temp_table_column_info ' || rec.script;
+      END LOOP;
+
+    --Generate temp table for alter scripts
+    drop table if exists temp_table_alter_scripts;
+    create temp table temp_table_alter_scripts as
+    SELECT 'alter table ' || table_full_name_new || ' alter column ' ||
+           column_name || ' type varchar(' || cast(round(column_actual_len * var_ratio) as varchar) || ');'
+    FROM temp_table_column_info
+    where round(column_actual_len * var_ratio) < column_def_len;
+
+    /*
+    --loop to resize the column length to actual size in new table
+
+    FOR rec IN SELECT column_name,column_actual_len,column_def_len FROM temp_table_column_info
+      LOOP
+        --RAISE INFO 'column name: %; actual len: %; def len: %', rec.column_name,rec.column_actual_len,rec.column_def_len;
+        IF rec.column_actual_len <> rec.column_def_len
+            THEN
+                RAISE INFO 'column name: %; actual len: %; def len: %', rec.column_name,rec.column_actual_len,rec.column_def_len;
+                EXECUTE 'alter table ' || table_full_name_new || ' alter column ' || rec.column_name || ' type varchar(' || cast(rec.column_actual_len as varchar) || ');';
+            END IF;
+      END LOOP;
+    */
+
+END;
+$$;
+
+```
 
 
-## Step 2: Execute the stored procedure, and then get the alter scripts to resize the columns by querying the temp table 
-
+## Step 2: Execute the stored procedure and then get the alter scripts 
 The procedure has the 4 parameters:
 1. var_schema_name varchar(50), the schema's name of the table where you want to resize the columns 
 2. var_table_name varchar(50), the table's name where you want to resize the columns 
@@ -16,6 +85,8 @@ The procedure has the 4 parameters:
 
 ```sql
 call proc_replicate_table_with_resize_columns('ad_dw', 'd301_dwm_customer', '_resize_columns', '1.15');
+
+*select* * *from* temp_table_alter_scripts;
 ```
 
 ## Step 3: 
