@@ -1,0 +1,1 @@
+# Resize-Redshift-Columns
