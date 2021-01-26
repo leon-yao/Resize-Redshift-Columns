@@ -86,9 +86,23 @@ The procedure has the 4 parameters:
 ```sql
 call proc_replicate_table_with_resize_columns('ad_dw', 'd301_dwm_customer', '_resize_columns', '1.15');
 
-*select* * *from* temp_table_alter_scripts;
+select from temp_table_alter_scripts;
 ```
 
-## Step 3: 
+## Step 3: Copy the alter scripts from Step 2, and run the scripts
+
+## Step 4: Double confirm whether the column size has been changed as expected 
+
+```sql
+select  a.table_name, a.column_name, a.data_type,
+       a.character_maximum_length as as_is_length, b.character_maximum_length as to_be_length
+from svv_columns as a
+inner join svv_columns as b
+    on a.table_name + '_resize_columns' = b.table_name
+    and a.column_name = b.column_name
+where a.table_schema = 'ad_dw'
+  and a.table_name = 'd301_dwm_customer'
+  and b.table_name = 'd301_dwm_customer_resize_columns';
+```
 
 
