@@ -100,7 +100,7 @@ select * from temp_table_alter_scripts;
 第三步，运行上一步中从temp_table_alter_scripts表中获得的SQL脚本。
 
 第四步，运行以下SQL脚本用于检查数据表中的列大小是否已经调整。
-```
+```sql
 select  a.table_name, a.column_name, a.data_type,
        a.character_maximum_length as as_is_length, b.character_maximum_length as to_be_length
 from svv_columns as a
@@ -114,7 +114,7 @@ where a.table_schema = 'test_schema'
 
 第五步，将原数据表中的数据unload倒S3中。
 具体操作可以参考以下SQL脚本，请将脚本中{s3-bucket-name}、{ACCESS_KEY_ID}、{SECRET_ACCESS_KEY}根据实际情况进行替换。
-```
+```sql
 unload ('select * from test_schema.test_table')
 to 's3://{s3-bucket-name}/resize-redshift-columns/test_table/'
 ACCESS_KEY_ID '{ACCESS_KEY_ID}'
@@ -125,7 +125,7 @@ GZIP;
 第六步，将S3中的数据copy倒新建数据表中。
 
 具体操作可以参考以下SQL脚本，请将脚本中{s3-bucket-name}、{ACCESS_KEY_ID}、{SECRET_ACCESS_KEY}根据实际情况进行替换。
-```
+```sql
 copy test_schema.test_table_resize_columns
 from 's3://{s3-bucket-name}/resize-redshift-columns/test_table/'
 ACCESS_KEY_ID '{ACCESS_KEY_ID}'
@@ -137,7 +137,7 @@ GZIP;
 
 运行以下SQL脚本，如果返回结果为空，则代表新建数据表中的数据与原数据表完全一致。如果返回有数据，则需要检查之前的步骤是否操作有误，导致数据不一致。
 
-```
+```sql
 select * from test_schema.test_table
 except
 select * from test_schema.test_table_resize_columns
@@ -152,7 +152,7 @@ select * from test_schema.test_table
 在该步骤中，首先将原数据表重命名，例如：添加_original后缀；然后，将新建数据表的名称重命名为原数据表的名称；最后，删除原数据表（注意：删除的数据表是带_original后缀的数据表）。
 
 具体操作可以参考以下SQL脚本：
-```
+```sql
 alter table test_schema.test_table
 rename to test_table_original;
 
