@@ -19,7 +19,7 @@ Amazon Redshift数据仓库是种快速且完全托管的数据仓库服务，�
 
 # 使用尽可能小的列大小
 
-接下来，我们会通过以下八个步骤，来完成对对一张数据表的优化，将数据表中所有varchar数据类型的列大小进行优化。
+接下来，我们会通过以下八个步骤，来完成对对一张数据表的优化，将数据表中所有varchar数据类型的列大小进行优化。下面示例脚本所操作的数据表为test_schema.test_table，请根据实际情况进行替换。
 
 第一步，创建存储过程 proc_replicate_table_with_resized_columns
 这个存储过程提供了4个参数，分别是：
@@ -89,6 +89,8 @@ $$;
 
 第二步，执行上一步中创建出来的存储过程，并从结果表中获得用于优化列大小的SQL脚本。
 
+具体操作可以参考以下SQL脚本，请将脚本中{s3-bucket-name}、{ACCESS_KEY_ID}、{SECRET_ACCESS_KEY}根据实际情况进行替换。
+
 ```sql
 call proc_replicate_table_with_resize_columns('test_schema', 'test_table', '_resize_columns', '1.15');
 
@@ -111,10 +113,10 @@ where a.table_schema = 'test_schema'
 ```
 
 第五步，将原数据表中的数据unload倒S3中。
-具体操作可以参考以下SQL脚本：
+具体操作可以参考以下SQL脚本，请将脚本中{s3-bucket-name}、{ACCESS_KEY_ID}、{SECRET_ACCESS_KEY}根据实际情况进行替换。
 ```
 unload ('select * from test_schema.test_table')
-to 's3://s3-bucket-name/resize-redshift-columns/test_table/'
+to 's3://{s3-bucket-name}/resize-redshift-columns/test_table/'
 ACCESS_KEY_ID '{ACCESS_KEY_ID}'
 SECRET_ACCESS_KEY '{SECRET_ACCESS_KEY}'
 GZIP;
@@ -122,10 +124,11 @@ GZIP;
 
 第六步，将S3中的数据copy倒新建数据表中。
 
-具体操作可以参考以下SQL脚本：
+具体操作可以参考以下SQL脚本，请将脚本中{s3-bucket-name}、{ACCESS_KEY_ID}、{SECRET_ACCESS_KEY}根据实际情况进行替换。
+```
 ```
 copy test_schema.test_table_resize_columns
-from 's3://s3-bucket-name/resize-redshift-columns/test_table/'
+from 's3://{s3-bucket-name}/resize-redshift-columns/test_table/'
 ACCESS_KEY_ID '{ACCESS_KEY_ID}'
 SECRET_ACCESS_KEY '{SECRET_ACCESS_KEY}'
 GZIP;
