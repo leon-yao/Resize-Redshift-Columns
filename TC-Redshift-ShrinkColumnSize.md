@@ -19,6 +19,7 @@ Amazon Redshift数据仓库是种快速且完全托管的数据仓库服务，�
 
 # 使用尽可能小的列大小
 
+接下来，我们会通过以下八个步骤，来完成对对一张数据表的优化，将数据表中所有varchar数据类型的列大小进行优化。
 
 第一步，创建存储过程 proc_replicate_table_with_resized_columns
 这个存储过程提供了4个参数，分别是：
@@ -29,8 +30,6 @@ Amazon Redshift数据仓库是种快速且完全托管的数据仓库服务，�
 - var_ratio decimal(19,2)，该参数用于指定一个系数，将列大小调整为该列最大长度乘以该系数。
 
 首先，该存储过程会创建一个和指定数据表一样表结构的新数据表，该新表的名称会在原先表的名称后附加一个您指定的后缀；其次，该存储过程会检查指定数据表中所有varchar数据类型的列，如果改列在现有数据中的最大长度乘以一个系数之后，仍然小于表定义中原先设定的长度，则会生成一个sql脚本用于将该列在新表中的长度调整为round(column_actual_len * var_ratio)。
-
-
 
 ```sql
 create or replace procedure proc_replicate_table_with_resized_columns
