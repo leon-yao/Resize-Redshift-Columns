@@ -126,7 +126,6 @@ GZIP;
 
 具体操作可以参考以下SQL脚本，请将脚本中{s3-bucket-name}、{ACCESS_KEY_ID}、{SECRET_ACCESS_KEY}根据实际情况进行替换。
 ```
-```
 copy test_schema.test_table_resize_columns
 from 's3://{s3-bucket-name}/resize-redshift-columns/test_table/'
 ACCESS_KEY_ID '{ACCESS_KEY_ID}'
@@ -161,5 +160,4 @@ alter table test_schema.test_table_resize_columns
 rename to test_table;
 
 drop table test_schema.test_table_original;
-
 ```
