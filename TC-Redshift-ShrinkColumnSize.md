@@ -220,5 +220,5 @@ rename to customer;
 
 drop table test_schema.customer_original;
 ```
-通过以上八个步骤，您就完成了对数据表test_schema.customer内所有varchar数据列大小的优化工作。
+通过以上的八个步骤，您就完成了对数据表test_schema.customer内所有varchar类型列大小的优化工作。
 
