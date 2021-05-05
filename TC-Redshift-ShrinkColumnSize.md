@@ -52,7 +52,7 @@ credentials 'aws_access_key_id=<Your-Access-Key-ID>;aws_secret_access_key=<Your-
 fixedwidth 'c_custkey:10, c_name:25, c_address:25, c_city:10, c_nation:15, c_region :12, c_phone:15,c_mktsegment:10';
 ```
 
-现在，数据表test_schema.customer中的varchar字段的长度都被定义为了65535。运行以下SQL脚本，可以看到实际数据中的字段长度远远小于65535.
+现在，数据表test_schema.customer中的varchar字段的长度都被定义为了65535。运行以下SQL脚本，可以看到实际数据中的字段长度远远小于65535。
 
 ```sql
   select
@@ -143,12 +143,16 @@ $$;
 具体操作可以参考以下SQL脚本，请将脚本中{s3-bucket-name}、{ACCESS_KEY_ID}、{SECRET_ACCESS_KEY}根据实际情况进行替换。
 
 ```sql
-call proc_replicate_table_with_resize_columns('test_schema', 'test_table', '_resize_columns', '1.15');
+call proc_replicate_table_with_resize_columns('test_schema', 'customer', '_resize_columns', '1.15');
 
 select * from temp_table_alter_scripts;
 ```
+返回结果如下图所示：
+
 
 第三步，运行上一步中从temp_table_alter_scripts表中返回的SQL脚本。
+
+
 
 第四步，运行以下SQL脚本用于检查数据表中的列大小是否已经调整。
 ```sql
@@ -159,7 +163,7 @@ inner join svv_columns as b
     on a.table_name + '_resize_columns' = b.table_name
     and a.column_name = b.column_name
 where a.table_schema = 'test_schema'
-  and a.table_name = 'test_table'
+  and a.table_name = 'customer'
   and b.table_name = 'test_table_resize_columns';
 ```
 
@@ -167,7 +171,7 @@ where a.table_schema = 'test_schema'
 具体操作可以参考以下SQL脚本，请将脚本中{s3-bucket-name}、{ACCESS_KEY_ID}、{SECRET_ACCESS_KEY}根据实际情况进行替换。
 ```sql
 unload ('select * from test_schema.test_table')
-to 's3://{s3-bucket-name}/resize-redshift-columns/test_table/'
+to 's3://{s3-bucket-name}/resize-redshift-columns/customer/'
 ACCESS_KEY_ID '{ACCESS_KEY_ID}'
 SECRET_ACCESS_KEY '{SECRET_ACCESS_KEY}'
 GZIP;
@@ -178,7 +182,7 @@ GZIP;
 具体操作可以参考以下SQL脚本，请将脚本中{s3-bucket-name}、{ACCESS_KEY_ID}、{SECRET_ACCESS_KEY}根据实际情况进行替换。
 ```sql
 copy test_schema.test_table_resize_columns
-from 's3://{s3-bucket-name}/resize-redshift-columns/test_table/'
+from 's3://{s3-bucket-name}/resize-redshift-columns/customer/'
 ACCESS_KEY_ID '{ACCESS_KEY_ID}'
 SECRET_ACCESS_KEY '{SECRET_ACCESS_KEY}'
 GZIP;
@@ -189,13 +193,13 @@ GZIP;
 运行以下SQL脚本，如果返回结果为空，则代表新建数据表中的数据与原数据表完全一致。如果返回有数据，则需要检查之前的步骤是否操作有误，导致数据不一致。
 
 ```sql
-select * from test_schema.test_table
+select * from test_schema.customer
 except
-select * from test_schema.test_table_resize_columns
+select * from test_schema.customer_resize_columns
 union all
-select * from test_schema.test_table_resize_columns
+select * from test_schema.customer_resize_columns
 except
-select * from test_schema.test_table
+select * from test_schema.customer
 ```
 
 第八步，重命名数据表，使得新建数据表替换原数据表，并在替换之后删除原数据表。
@@ -204,13 +208,13 @@ select * from test_schema.test_table
 
 具体操作可以参考以下SQL脚本：
 ```sql
-alter table test_schema.test_table
-rename to test_table_original;
+alter table test_schema.customer
+rename to customer_original;
 
-alter table test_schema.test_table_resize_columns
+alter table test_schema.customer_resize_columns
 rename to test_table;
 
-drop table test_schema.test_table_original;
+drop table test_schema.customer_original;
 ```
-通过以上八个步骤，您就完成了对数据表test_schema.test_table内所有varchar数据列大小的优化工作。
+通过以上八个步骤，您就完成了对数据表test_schema.customer内所有varchar数据列大小的优化工作。
 
