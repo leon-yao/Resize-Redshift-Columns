@@ -65,12 +65,12 @@ fixedwidth 'c_custkey:10, c_name:25, c_address:25, c_city:10, c_nation:15, c_reg
       max(len(c_mktsegment)) as c_mktsegment
   from test_schema.customer
 ```
-![Xnip2021-05-05_17-01-12](https://user-images.githubusercontent.com/19648269/117145037-4021b900-ade5-11eb-82ad-cb3e8499f9ce.jpg)
+![column max length in table](https://user-images.githubusercontent.com/19648269/117145037-4021b900-ade5-11eb-82ad-cb3e8499f9ce.jpg)
 
 
 ### 优化现有数据表中列大小的操作过程
 
-接下来，我们会通过以下八个步骤，来完成对数据表test_schema.customer的优化工作，将数据表中所有varchar数据类型的列大小进行优化，根据已有数据的最大长度来进行相应的压缩。下面示例脚本所操作的数据表为test_schema.test_table，请根据实际情况进行替换。
+接下来，我们会通过下面的八个步骤，来完成对数据表test_schema.customer的优化工作，将数据表中所有varchar数据类型的列大小进行优化，根据已有数据的最大长度来进行相应的压缩。
 
 第一步，在Redshift数据库中创建存储过程 proc_replicate_table_with_resized_columns。
 这个存储过程提供了4个参数，分别是：
@@ -100,6 +100,8 @@ DECLARE
 BEGIN
     select into table_full_name var_schema_name || '.' || var_table_name;
     select into table_full_name_new  var_schema_name || '.' || var_table_name || var_postfix;
+
+    EXECUTE 'drop table  if exists'  || table_full_name_new;
 
     --create a new table with the same schema
     EXECUTE 'create table '  || table_full_name_new || ' (like ' || table_full_name || ')';
@@ -143,15 +145,15 @@ $$;
 具体操作可以参考以下SQL脚本，请将脚本中{s3-bucket-name}、{ACCESS_KEY_ID}、{SECRET_ACCESS_KEY}根据实际情况进行替换。
 
 ```sql
-call proc_replicate_table_with_resize_columns('test_schema', 'customer', '_resize_columns', '1.15');
+call proc_replicate_table_with_resized_columns('test_schema', 'customer', '_resize_columns', '1.3');
 
 select * from temp_table_alter_scripts;
 ```
 返回结果如下图所示：
+![alter column size](https://user-images.githubusercontent.com/19648269/117150479-c4c30600-adea-11eb-983b-f4a13305304b.jpg)
 
 
 第三步，运行上一步中从temp_table_alter_scripts表中返回的SQL脚本。
-
 
 
 第四步，运行以下SQL脚本用于检查数据表中的列大小是否已经调整。
@@ -164,13 +166,15 @@ inner join svv_columns as b
     and a.column_name = b.column_name
 where a.table_schema = 'test_schema'
   and a.table_name = 'customer'
-  and b.table_name = 'test_table_resize_columns';
+  and b.table_name = 'customer_resize_columns';
 ```
+运行结果如下图所示。可以看到，数据表中的varchar类型字段的长度都依据现有数据实际长度进行了调整。
+![columns to be length](https://user-images.githubusercontent.com/19648269/117151000-3d29c700-adeb-11eb-960b-d9e3a5c004ab.jpg)
 
 第五步，将原数据表中的数据UNLOAD到指定的S3路径中。
 具体操作可以参考以下SQL脚本，请将脚本中{s3-bucket-name}、{ACCESS_KEY_ID}、{SECRET_ACCESS_KEY}根据实际情况进行替换。
 ```sql
-unload ('select * from test_schema.test_table')
+unload ('select * from test_schema.customer')
 to 's3://{s3-bucket-name}/resize-redshift-columns/customer/'
 ACCESS_KEY_ID '{ACCESS_KEY_ID}'
 SECRET_ACCESS_KEY '{SECRET_ACCESS_KEY}'
@@ -181,7 +185,7 @@ GZIP;
 
 具体操作可以参考以下SQL脚本，请将脚本中{s3-bucket-name}、{ACCESS_KEY_ID}、{SECRET_ACCESS_KEY}根据实际情况进行替换。
 ```sql
-copy test_schema.test_table_resize_columns
+copy test_schema.customer_resize_columns
 from 's3://{s3-bucket-name}/resize-redshift-columns/customer/'
 ACCESS_KEY_ID '{ACCESS_KEY_ID}'
 SECRET_ACCESS_KEY '{SECRET_ACCESS_KEY}'
@@ -212,7 +216,7 @@ alter table test_schema.customer
 rename to customer_original;
 
 alter table test_schema.customer_resize_columns
-rename to test_table;
+rename to customer;
 
 drop table test_schema.customer_original;
 ```
